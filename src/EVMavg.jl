@@ -62,8 +62,7 @@ end
 """
     evm_avg, se_int, se_ext = evm(data, sigmas)
 
-Query any catalogue available in the VizieR database using generic URL used in ASU.
-See VizieR documentation for more informations (http://vizier.cfa.harvard.edu/doc/asu-summary.htx)
+Computes the EVM average.
 
 ### Arguments
 * `data::AbstractArray`: data
@@ -123,7 +122,7 @@ end
 
 # ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-# Helper function for asymmatric standard errors
+# Helper function for asymmetric standard errors
 function evm_a(x,μ,a,b)
 
     if x <= my  res = sqrt(2/(pi*(a+b)^2)) * exp( -(x-μ)^2 / (2*b^2)) end
