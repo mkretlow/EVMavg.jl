@@ -1,7 +1,6 @@
 # EVMavg.jl
 
 [![Build Status](https://github.com/mkretlow/EVMavg.jl/workflows/CI/badge.svg)](https://github.com/mkretlow/EVMavg.jl/actions)
-[![Coverage](https://codecov.io/gh/mkretlow/EVMavg.jl/branch/main/graph/badge.svg)](https://codecov.io/gh/mkretlow/EVMavg.jl)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 A Julia package for robust averaging of numerical data using the **Expected Value Method (EVM)** - an alternative to traditional weighted and unweighted averaging methods.
