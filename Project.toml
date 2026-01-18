@@ -2,7 +2,7 @@ name = "EVMavg"
 uuid = "83676904-526c-4bd2-b920-806f8f4550db"
 desc = "Averaging with the Expected Value Method EVM (Birch, M., Singh, B., 2014, Nuclear Data Sheets, 120, 106)"
 authors = ["Mike Kretlow <mike@kretlow.de>"]
-version = "1.0.0"
+version = "0.1.0"
 
 [deps]
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"

@@ -45,6 +45,7 @@ Pkg.add("EVMavg")
 ```
 
 Or in the Julia REPL package mode (press `]`):
+
 ```julia
 pkg> add EVMavg
 ```
