@@ -1,8 +1,19 @@
 name = "EVMavg"
-uuid = "97afd690-e204-4cec-b5da-4208811d2aed"
+uuid = "83676904-526c-4bd2-b920-806f8f4550db"
 desc = "Averaging with the Expected Value Method EVM (Birch, M., Singh, B., 2014, Nuclear Data Sheets, 120, 106)"
 authors = ["Mike Kretlow <mike@kretlow.de>"]
-version = "0.1.0"
+version = "1.0.0"
 
 [deps]
+SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
+Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
+
+[compat]
+julia = "1.6"
+SpecialFunctions = "1, 2"
+
+[extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[targets]
+test = ["Test"]
