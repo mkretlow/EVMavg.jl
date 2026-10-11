@@ -1,0 +1,39 @@
+cff-version: 1.2.0
+message: >-
+  If you use this software, please cite it as below, together with
+  the paper describing the Expected Value Method (Birch & Singh, 2014).
+type: software
+title: "EVMavg.jl: Averaging with the Expected Value Method in Julia"
+abstract: >-
+  A Julia package for averaging data with uncertainties using the
+  Expected Value Method (EVM) of Birch & Singh (2014), including
+  asymmetric uncertainties, internal and external uncertainty
+  estimates, and a goodness-of-fit confidence level.
+authors:
+  - family-names: Kretlow
+    given-names: Mike
+    email: mike@kretlow.de
+version: 0.1.0
+license: MIT
+repository-code: "https://github.com/mkretlow/EVMavg.jl"
+keywords:
+  - Julia
+  - statistics
+  - averaging
+  - uncertainties
+  - expected value method
+  - data evaluation
+references:
+  - type: article
+    title: Method of Best Representation for Averages in Data Evaluation
+    authors:
+      - family-names: Birch
+        given-names: M.
+      - family-names: Singh
+        given-names: B.
+    journal: Nuclear Data Sheets
+    volume: 120
+    start: 106
+    end: 108
+    year: 2014
+    doi: 10.1016/j.nds.2014.07.019

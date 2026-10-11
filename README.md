@@ -349,16 +349,26 @@ This package is licensed under the MIT License - see the LICENSE file for detail
 
 ## Citation
 
-If you use this package in your research, please cite:
+If you use this package in your research, please cite both the package and the paper
+describing the method. The repository includes a [`CITATION.cff`](CITATION.cff) file, so
+GitHub's "Cite this repository" button provides the package citation in several formats.
 
 ```bibtex
+@software{kretlow_evmavg,
+  author = {Kretlow, Mike},
+  title  = {{EVMavg.jl}: Averaging with the Expected Value Method in {Julia}},
+  url    = {https://github.com/mkretlow/EVMavg.jl},
+  version = {0.1.0},
+  year   = {2026}
+}
+
 @article{birch2014method,
-  title={Method of Best Representation for Averages in Data Evaluation},
-  author={Birch, M. and Singh, B.},
-  journal={Nuclear Data Sheets},
-  volume={120},
-  pages={106--108},
-  year={2014},
-  doi={10.1016/j.nds.2014.07.019}
+  title   = {Method of Best Representation for Averages in Data Evaluation},
+  author  = {Birch, M. and Singh, B.},
+  journal = {Nuclear Data Sheets},
+  volume  = {120},
+  pages   = {106--108},
+  year    = {2014},
+  doi     = {10.1016/j.nds.2014.07.019}
 }
 ```
