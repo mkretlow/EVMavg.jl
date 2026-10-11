@@ -60,7 +60,8 @@ sigmas = [0.3, 0.6, 2.0, 1.3, 0.8, 0.34]
 
 # Traditional weighted average
 avg_result = avg(data, sigmas)
-println("Weighted average: $(avg_result.weighted) ± $(avg_result.std_error)")
+σ_avg = max(avg_result.internal_error, avg_result.external_error)
+println("Weighted average: $(avg_result.weighted) ± $σ_avg")
 
 # EVM average (more robust)
 evm_result = evm(data, sigmas)
@@ -68,7 +69,7 @@ evm_result = evm(data, sigmas)
 println("EVM average: $(evm_result.mean) ± $σ")
 println("Confidence: $(round(evm_result.confidence_level * 100, digits=1))%")
 
-# Weighted average: 5.94 ± 0.48
+# Weighted average: 5.94 ± 0.20  (internal 0.20, external 0.18)
 # EVM average: 5.88 ± 0.52  (internal 0.37, external 0.52)
 # Confidence: 97.7%
 ```
@@ -86,8 +87,14 @@ result = avg(data, sigmas)
 **Returns:** `AvgResult` containing:
 
 - `unweighted`: Simple arithmetic mean
-- `weighted`: Inverse-variance weighted average
-- `std_error`: Standard error of the weighted average
+- `weighted`: Inverse-variance weighted average x̄_w, with weights wᵢ = 1/σᵢ²
+- `internal_error`: Internal uncertainty from the input uncertainties, 1/√(Σwᵢ)
+- `external_error`: External uncertainty from the scatter around x̄_w, √(χ² / ((n−1)Σwᵢ))
+- `reduced_chi2`: Reduced chi-square χ²/(n−1), with χ² = Σwᵢ(xᵢ − x̄_w)²
+
+The external uncertainty equals the internal one scaled by the Birge ratio √(χ²/(n−1)).
+As for EVM, report the larger of the two. For a single measurement, `external_error` is 0
+and `reduced_chi2` is `NaN`.
 
 ### Expected Value Method (EVM)
 
@@ -180,8 +187,9 @@ println("Result: $(result.mean) +$(result.upper_error) -$(result.lower_error)")
 
 ### 1. More Realistic Uncertainties
 
-When data disagree, the traditional weighted average is pulled toward the discrepant point, and its
-internal uncertainty (1/√Σwᵢ) ignores the scatter entirely:
+When data disagree, the traditional weighted average is pulled toward the discrepant point. Its
+internal uncertainty (1/√Σwᵢ) ignores the scatter entirely, and even the external uncertainty
+(scaled by the Birge ratio) does not cover the shift caused by the outlier:
 
 ```julia
 # Discrepant data
@@ -192,7 +200,7 @@ evm_result = evm(data, errors)
 avg_result = avg(data, errors)
 
 # Unweighted average: 11.1
-# Weighted average  : 10.7  (internal uncertainty 1/√Σwᵢ = 0.09)
+# Weighted average  : 10.7 ± 0.6 (external; internal only 0.09, reduced χ² = 41)
 # EVM average       : 10.5 ± 1.0 (external uncertainty, reflects the spread)
 # W.avg, w/o outlier: 10.3
 ```
@@ -296,6 +304,33 @@ first 2⁺ state in ⁴⁸Ti: τ = 5.83(86) ps for the lifetimes and B(E2)↑ = 
 - **Use confidence level**: Low values suggest investigating data quality
 - **Remove systematic outliers**: Suspect measurements should be excluded before averaging
 
+
+## Changelog
+
+### Unreleased
+
+Changes from a review of the implementation against Birch & Singh (2014):
+
+- **Confidence level (Eq. 6):** p_l is now the exact integral ∫_{-∞}^{x_EVM} M(x) dx,
+  computed from the Gaussian and split-Gaussian CDFs. Before, it was approximated by the sum of
+  the weights below the mean. Confidence levels change, sometimes considerably (e.g. 48Ti
+  lifetimes: 54.6% → 89.8%). Eq. 7 is evaluated with `erfc` for accuracy at small values.
+- **Asymmetric final uncertainty:** `evm_asymmetric` now follows the paper's rule. The variance
+  of the internal split normal, (1 − 2/π)(σ_int+ − σ_int-)² + σ_int+ σ_int-, is compared with
+  σ_ext², and either the internal pair or ±σ_ext is reported. Before, the maximum was taken
+  separately for each direction, which could mix the two (e.g. +σ_int+ −σ_ext).
+- **Weighted average (breaking):** `AvgResult.std_error` has been replaced by
+  `internal_error`, `external_error` and `reduced_chi2`. The old value used the scatter around
+  the unweighted mean and an effective sample size, and was neither the standard internal nor
+  external uncertainty.
+- **Single measurement:** `evm` and `evm_asymmetric` now both return an external uncertainty of
+  0 (Eq. 5) and a confidence level of `NaN`. `avg` returns an external uncertainty of 0 and
+  `reduced_chi2 = NaN`.
+- **Input validation:** `Inf` values are now rejected along with `NaN`.
+- **Tests:** added a regression test against Table I of the paper (48Ti lifetimes and
+  B(E2) values), and numerical-integration checks of the CDFs and the confidence level.
+- **Documentation:** corrected the README examples, merged conflicting sections on which
+  uncertainty to report, and documented the asymmetric method and the confidence-level test.
 
 ## References
 

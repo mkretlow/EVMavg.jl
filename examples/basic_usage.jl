@@ -55,7 +55,10 @@ for (i, (d, s)) in enumerate(zip(data, sigmas))
 end
 
 println("\nWeighted Average:")
-println("  Result: $(round(avg_result.weighted, digits=2)) ± $(round(avg_result.std_error, digits=2))")
+σ_avg = max(avg_result.internal_error, avg_result.external_error)
+println("  Result: $(round(avg_result.weighted, digits=2)) ± $(round(σ_avg, digits=2))")
+println("  Internal error: $(round(avg_result.internal_error, digits=2)), external error: $(round(avg_result.external_error, digits=2))")
+println("  Reduced chi-square: $(round(avg_result.reduced_chi2, digits=1))")
 
 println("\nEVM Average:")
 println("  Result: $(round(evm_result.mean, digits=2)) ± $(round(evm_result.external_error, digits=2))")

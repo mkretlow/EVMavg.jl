@@ -44,12 +44,17 @@ Structure containing results from the `avg` function.
 # Fields
 - `unweighted::Float64`: Unweighted average
 - `weighted::Float64`: Weighted average (inverse variance weighting)
-- `std_error::Float64`: Standard error of the weighted average
+- `internal_error::Float64`: Internal uncertainty of the weighted average, 1/√(Σwᵢ)
+- `external_error::Float64`: External uncertainty of the weighted average,
+  √(Σwᵢ(xᵢ - x̄_w)² / ((n-1)Σwᵢ)) = `internal_error` × √`reduced_chi2`
+- `reduced_chi2::Float64`: Reduced chi-square χ²/(n-1); its square root is the Birge ratio
 """
 struct AvgResult
     unweighted::Float64
     weighted::Float64
-    std_error::Float64
+    internal_error::Float64
+    external_error::Float64
+    reduced_chi2::Float64
 end
 
 """
@@ -110,7 +115,9 @@ function Base.show(io::IO, result::AvgResult)
     println(io, "AvgResult:")
     println(io, "  Unweighted average: $(result.unweighted)")
     println(io, "  Weighted average: $(result.weighted)")
-    println(io, "  Standard error: $(result.std_error)")
+    println(io, "  Internal error: $(result.internal_error)")
+    println(io, "  External error: $(result.external_error)")
+    println(io, "  Reduced chi-square: $(result.reduced_chi2)")
 end
 
 function Base.show(io::IO, result::EVMAsymmetricResult)
@@ -124,16 +131,26 @@ end
 """
     avg(data::AbstractVector, sigmas::AbstractVector) -> AvgResult
 
-Compute unweighted and weighted averages with standard error.
+Compute unweighted and weighted averages with internal and external uncertainties.
 
-The weighted average uses inverse variance weighting: w_i = 1/σ_i².
+The weighted average uses inverse variance weighting: wᵢ = 1/σᵢ².
+
+- Internal uncertainty (from the input uncertainties): σ_int = 1/√(Σwᵢ)
+- External uncertainty (from the scatter around the weighted average):
+  σ_ext = √(χ² / ((n-1)Σwᵢ)), with χ² = Σwᵢ(xᵢ - x̄_w)²
+- Reduced chi-square: χ²/(n-1), so that σ_ext = σ_int × √(χ²/(n-1))
+
+As for EVM, the larger of the two uncertainties is usually reported.
+For a single measurement the external uncertainty is 0 and the reduced
+chi-square is NaN.
 
 # Arguments
 - `data::AbstractVector`: Data values
 - `sigmas::AbstractVector`: Uncertainties (standard deviations) for each data point
 
 # Returns
-- `AvgResult`: Structure containing unweighted average, weighted average, and standard error
+- `AvgResult`: Structure containing unweighted average, weighted average,
+  internal and external uncertainties, and reduced chi-square
 
 # Throws
 - `ArgumentError`: If arrays have different lengths or contain invalid values
@@ -144,7 +161,7 @@ data = [10.2, 10.5, 10.1, 10.4]
 sigmas = [0.3, 0.2, 0.4, 0.25]
 result = avg(data, sigmas)
 println(result.weighted)  # Weighted average
-println(result.std_error)  # Standard error
+println(max(result.internal_error, result.external_error))  # Uncertainty
 ```
 """
 function avg(data::AbstractVector{<:Real}, sigmas::AbstractVector{<:Real})
@@ -164,9 +181,9 @@ function avg(data::AbstractVector{<:Real}, sigmas::AbstractVector{<:Real})
         throw(ArgumentError("data and sigmas must be finite (no NaN or Inf values)"))
     end
     
-    # Handle single measurement
+    # Single measurement: no spread and no chi-square test possible
     if n == 1
-        return AvgResult(data[1], data[1], sigmas[1])
+        return AvgResult(data[1], data[1], sigmas[1], 0.0, NaN)
     end
     
     # Calculate weights
@@ -179,12 +196,15 @@ function avg(data::AbstractVector{<:Real}, sigmas::AbstractVector{<:Real})
     # Weighted average
     weighted_avg = sum(data .* w) / sw
     
-    # Standard error of weighted average
-    variance = sum((data .- unweighted_avg).^2) / (n - 1)
-    effective_n = sw^2 / sum(w.^2)
-    std_err = sqrt(variance / effective_n)
+    # Internal uncertainty (from the input uncertainties)
+    internal_error = 1 / sqrt(sw)
     
-    return AvgResult(unweighted_avg, weighted_avg, std_err)
+    # External uncertainty (from the scatter around the weighted average)
+    chi2 = sum(w .* (data .- weighted_avg).^2)
+    reduced_chi2 = chi2 / (n - 1)
+    external_error = internal_error * sqrt(reduced_chi2)
+    
+    return AvgResult(unweighted_avg, weighted_avg, internal_error, external_error, reduced_chi2)
 end
 
 """

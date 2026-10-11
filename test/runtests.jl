@@ -13,15 +13,22 @@ using Test
         @test result isa AvgResult
         @test result.unweighted ≈ 10.15
         @test result.weighted ≈ 10.15
-        @test result.std_error > 0
+        # Equal uncertainties: σ_int = σ/√n, σ_ext = std(data)/√n
+        n = length(data)
+        @test result.internal_error ≈ 0.2 / sqrt(n)
+        sd = sqrt(sum((data .- 10.15).^2) / (n - 1))
+        @test result.external_error ≈ sd / sqrt(n)
+        @test result.reduced_chi2 ≈ sd^2 / 0.2^2
         
         # Single measurement
         result_single = avg([5.0], [0.5])
         @test result_single.unweighted == 5.0
         @test result_single.weighted == 5.0
-        @test result_single.std_error == 0.5
+        @test result_single.internal_error == 0.5
+        @test result_single.external_error == 0.0
+        @test isnan(result_single.reduced_chi2)
 
-        # Another (legacy) test
+        # Another test, unequal uncertainties
         data = [1.0, 2.0, 3.0, 4.0]
         sigmas = [0.1, 0.2, 0.3, 0.4]
 
@@ -29,7 +36,13 @@ using Test
 
         @test result.unweighted ≈ 2.5 atol=1E-14
         @test result.weighted ≈ 1.4634146341463417 atol=1E-14
-        @test result.std_error ≈ 0.941876146945452 atol=1E-14
+        w = 1 ./ sigmas.^2
+        @test result.internal_error ≈ 1 / sqrt(sum(w))
+        @test result.reduced_chi2 ≈ sum(w .* (data .- result.weighted).^2) / 3
+        @test result.external_error ≈ result.internal_error * sqrt(result.reduced_chi2)
+        @test result.internal_error ≈ 0.08381163549234939 atol=1E-14
+        @test result.external_error ≈ 0.47193703892479316 atol=1E-14
+        @test result.reduced_chi2 ≈ 31.707317073170724 atol=1E-12
 
     end
     
@@ -235,7 +248,9 @@ using Test
         # Both methods should reflect the scatter, but EVM is designed to be robust
         # External error should be positive and reflect data spread
         @test evm_result.external_error > 0.5
-        @test avg_result.std_error > 0
+        # The outlier inflates the external uncertainty of the weighted average
+        @test avg_result.external_error > avg_result.internal_error
+        @test avg_result.reduced_chi2 > 1
     end
     
     @testset "Edge cases" begin
