@@ -13,7 +13,7 @@ authors:
   - family-names: Kretlow
     given-names: Mike
     email: mike@kretlow.de
-version: 0.1.0
+version: 2.0.0
 license: MIT
 repository-code: "https://github.com/mkretlow/EVMavg.jl"
 keywords:

@@ -307,18 +307,39 @@ first 2⁺ state in ⁴⁸Ti: τ = 5.83(86) ps for the lifetimes and B(E2)↑ = 
 
 ## Changelog
 
-### 0.1.0 (initial release)
+### 2.0.0
 
-- `evm`: Expected Value Method average with internal and external uncertainties, weights and
-  confidence level (Birch & Singh 2014, Eqs. 2–7). The probability p_l in the confidence test
-  is computed exactly from the Gaussian CDFs.
-- `evm_asymmetric`: EVM for asymmetric uncertainties using the split Gaussian of Eq. 1. The
-  reported uncertainty is the internal pair or ±σ_ext, whichever has the larger variance, as
-  recommended in the paper.
-- `avg`: unweighted and inverse-variance weighted average with internal and external
-  uncertainties and reduced chi-square.
-- Validated against the EVM results of Table I in Birch & Singh (2014) for ⁴⁸Ti.
-- Requires Julia 1.10 or later.
+Changes since 1.0.0, from a review of the implementation against Birch & Singh (2014).
+This release is **breaking**: results of `evm` and `evm_asymmetric` can differ from 1.0.0,
+and the fields of `AvgResult` have changed.
+
+- **Confidence level (Eq. 6):** p_l is now the exact integral ∫_{-∞}^{x_EVM} M(x) dx,
+  computed from the Gaussian and split-Gaussian CDFs. In 1.0.0, it was approximated by the sum
+  of the weights below the mean. Confidence levels change, sometimes considerably (e.g. ⁴⁸Ti
+  lifetimes: 54.6% → 89.8%). Eq. 7 is evaluated with `erfc` for accuracy at small values.
+- **Asymmetric final uncertainty:** `evm_asymmetric` now follows the paper's rule. The variance
+  of the internal split normal, (1 − 2/π)(σ_int+ − σ_int-)² + σ_int+ σ_int-, is compared with
+  σ_ext², and either the internal pair or ±σ_ext is reported. In 1.0.0, the maximum was taken
+  separately for each direction, which could mix the two (e.g. +σ_int+ −σ_ext).
+- **Weighted average:** `AvgResult.std_error` has been replaced by `internal_error`,
+  `external_error` and `reduced_chi2`. The old value used the scatter around the unweighted
+  mean and an effective sample size, and was neither the standard internal nor external
+  uncertainty.
+- **Single measurement:** `evm` and `evm_asymmetric` now both return an external uncertainty of
+  0 (Eq. 5) and a confidence level of `NaN`. `avg` returns an external uncertainty of 0 and
+  `reduced_chi2 = NaN`.
+- **Input validation:** `Inf` values are now rejected along with `NaN`.
+- **Requirements:** Julia 1.10 (LTS) or later is required (1.0.0: Julia 1.6). The dependency on
+  `Statistics` has been removed.
+- **Tests:** added a regression test against Table I of the paper (⁴⁸Ti lifetimes and
+  B(E2) values), and numerical-integration checks of the CDFs and the confidence level.
+- **Documentation:** corrected the README examples, merged conflicting sections on which
+  uncertainty to report, documented the asymmetric method and the confidence-level test, and
+  added a `CITATION.cff`.
+
+### 1.0.0
+
+Initial release: `evm`, `evm_asymmetric` and `avg`.
 
 ## References
 
@@ -344,7 +365,7 @@ GitHub's "Cite this repository" button provides the package citation in several 
   author = {Kretlow, Mike},
   title  = {{EVMavg.jl}: Averaging with the Expected Value Method in {Julia}},
   url    = {https://github.com/mkretlow/EVMavg.jl},
-  version = {0.1.0},
+  version = {2.0.0},
   year   = {2026}
 }
 
