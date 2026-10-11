@@ -64,12 +64,12 @@ println("Weighted average: $(avg_result.weighted) ± $(avg_result.std_error)")
 
 # EVM average (more robust)
 evm_result = evm(data, sigmas)
-println("EVM average: $(evm_result.mean) ± $(evm_result.external_error)")
+σ = max(evm_result.internal_error, evm_result.external_error)
+println("EVM average: $(evm_result.mean) ± $σ")
 println("Confidence: $(round(evm_result.confidence_level * 100, digits=1))%")
 
-# EVM automatically down-weights outliers and provides realistic uncertainties
-# Weighted average: 5.93 ± 0.48
-# EVM average: 5.89 ± 0.87  (more realistic given the scatter)
+# Weighted average: 5.94 ± 0.48
+# EVM average: 5.88 ± 0.52  (internal 0.37, external 0.52)
 # Confidence: 97.7%
 ```
 
@@ -113,6 +113,14 @@ result = evm(data, errors; compute_confidence=true)
 - `weights`: Normalized weight for each measurement
 - `confidence_level`: Goodness of fit measure (0-1)
 
+**Which uncertainty to report?**
+
+Report the larger of `internal_error` and `external_error`. Following Birch & Singh (2014),
+the quoted uncertainty should be the more conservative of the two estimates:
+
+- **Internal uncertainty**: Reflects measurement precision (from the input errors)
+- **External uncertainty**: Reflects measurement scatter (consistency of the data)
+
 #### Asymmetric Uncertainties
 
 For measurements with different upper and lower error bars (e.g., from likelihood fits):
@@ -144,9 +152,9 @@ result = evm_asymmetric(data, lower_errors, upper_errors; compute_confidence=tru
 Always report `upper_error` and `lower_error` - these are the final uncertainties that 
 conservatively combine both sources:
 
-- **Internal uncertainties**: Reflect measurement precision (from input errors)
-- **External uncertainty**: Reflects measurement scatter (consistency of data)
-- **Final uncertainties**: Take max(internal, external) variance for each direction
+- **Internal uncertainties**: Reflect measurement precision (from input errors), separately for each direction
+- **External uncertainty**: Reflects measurement scatter (consistency of data), symmetric
+- **Final uncertainties**: For each direction, the larger of the internal and external uncertainty
 
 The other fields are provided for diagnostic purposes to understand uncertainty sources.
 
@@ -164,31 +172,12 @@ println("Result: $(result.mean) +$(result.upper_error) -$(result.lower_error)")
 # Result: 10.25635530596962 +0.2885762483615959 -0.1752029094931697
 ```
 
-**Which uncertainty to report?**
-
-- Use **external error** when measurements show scatter (typical case)
-- Use **internal error** only when measurements are highly consistent
-- Generally, report the larger of the two uncertainties
-
-### Weighted Average
-
-For comparison, the package also provides traditional weighted averaging:
-
-```julia
-result = avg(data, sigmas)
-```
-
-**Returns:** `AvgResult` containing:
-
-- `unweighted`: Simple arithmetic mean
-- `weighted`: Inverse-variance weighted average
-- `std_error`: Standard error of the weighted average
-
 ## Advantages Over Traditional Methods
 
 ### 1. More Realistic Uncertainties
 
-Traditional weighted averaging can significantly underestimate uncertainties when data disagree:
+When data disagree, the traditional weighted average is pulled toward the discrepant point, and its
+internal uncertainty (1/√Σwᵢ) ignores the scatter entirely:
 
 ```julia
 # Discrepant data
@@ -199,8 +188,8 @@ evm_result = evm(data, errors)
 avg_result = avg(data, errors)
 
 # Unweighted average: 11.1
-# Weighted average  : 10.7 ± 0.8 (unrealistic - ignores scatter)
-# EVM average       : 10.5 ± 1.0 (realistic - reflects actual spread)
+# Weighted average  : 10.7  (internal uncertainty 1/√Σwᵢ = 0.09)
+# EVM average       : 10.5 ± 1.0 (external uncertainty, reflects the spread)
 # W.avg, w/o outlier: 10.3
 ```
 
@@ -211,33 +200,27 @@ The EVM external uncertainty reflects the actual scatter in the data, providing 
 Outlying data points automatically receive reduced weight without manual intervention:
 
 ```julia
-println("EVM weights: ", evm_result.weights)
-# Outlier at 14.3 will have much lower weight than other data points
+println("EVM weights: ", round.(evm_result.weights, digits=3))
+# EVM weights: [0.256, 0.213, 0.061, 0.213, 0.256]
+# The outlier at 14.3 receives a much lower weight than the other data points
 ```
 
 ### 3. Interpreting Confidence Levels
-The confidence level is a goodness-of-fit measure, but it's specifically testing whether the data are consistent with the EVM model (the mean probability density M(x)). Interpretation:  
 
-**High confidence** (e.g., 0.8-0.95 or 80-95%):
+The confidence level α tests whether the data are consistent with the EVM model, i.e. with
+the mean probability density M(x). It is not related to the confidence interval of the
+mean, which is always one standard deviation (68%).
 
-- The data points are distributed around the EVM mean in a way that's consistent with the expected probability distribution
-- The data "look like" they could have come from the model
-- Good data quality and consistency
+- **Low values** (a few percent or less): the data are unlikely to be realizations of M(x).
+  This may indicate outliers, systematic errors, underestimated uncertainties, or
+  measurements that do not sample the same underlying value.
+- **Moderate to high values**: no evidence against the model.
+- **Very high values** (close to 100%): be cautious. With few data points the χ²
+  approximation behind α is poor and the test may simply not be able to draw a conclusion;
+  very high values can also hint at overestimated uncertainties.
 
-**Medium confidence** (e.g., 0.5-0.8 or 50-80%):
-
-- Acceptable fit, some scatter but not alarming
-- Data are reasonably consistent
-
-**Low confidence** (e.g., <0.5 or <50%):
-
-- Data distribution is unusual given the model
-- Could indicate: outliers, systematic errors, underestimated uncertainties, or that measurements aren't actually sampling the same underlying value
-
-**Very high confidence** (e.g., >0.95 or >95%):
-
-- Could be suspicious! May indicate overestimated uncertainties or too few data points for the test to be reliable
-
+The test only compares the number of points below and above the mean with the expected
+fractions, so it is a fairly weak test, especially for small data sets.
 
 ## Method Details
 
@@ -261,12 +244,21 @@ The EVM average is computed as:
 x_EVM = Σᵢ wᵢ μᵢ,  where wᵢ = M(μᵢ) / Σⱼ M(μⱼ)
 ```
 
+For asymmetric uncertainties (μᵢ +aᵢ −bᵢ), p is replaced by a split Gaussian (Eq. 1 of the paper):
+
+```
+A(x; μ, a, b) = √(2/(π(a+b)²)) exp(-(x-μ)²/(2b²)),  x ≤ μ
+A(x; μ, a, b) = √(2/(π(a+b)²)) exp(-(x-μ)²/(2a²)),  x > μ
+```
+
 ### Uncertainties
 
 **Internal uncertainty** (from measurement precision):
 ```
 σ_int = √(Σᵢ wᵢ² σᵢ²)
 ```
+
+For asymmetric uncertainties: σ_int+ = √(Σᵢ wᵢ² aᵢ²) and σ_int- = √(Σᵢ wᵢ² bᵢ²).
 
 **External uncertainty** (from measurement spread):
 ```
@@ -275,20 +267,29 @@ x_EVM = Σᵢ wᵢ μᵢ,  where wᵢ = M(μᵢ) / Σⱼ M(μⱼ)
 
 ### Confidence Level
 
-Uses a modified χ² test comparing observed vs. expected numbers of measurements above/below the mean. Values near 0 or 1 may indicate issues; typical good fits have 0.5-0.95 confidence.
+A modified χ² test (Eqs. 6 and 7 of the paper) compares the observed numbers of
+measurements below (N_l) and above (N_h) the mean with the expected ones:
 
-The Statistical Test:  
+```
+Q = (N_l - n p_l)² / (n p_l) + (N_h - n p_h)² / (n p_h)
+p_l = ∫_{-∞}^{x_EVM} M(x) dx,   p_h = 1 - p_l
+α = 1 - erf(√(Q/2))
+```
 
-- Count how many points fall above vs. below the EVM mean
-- Compare to the expected ratio (based on the mean probability density)
-- Compute a χ² statistic Q
-- Convert to confidence level using 1 - erf(√(Q/2))
+p_l is computed exactly from the cumulative distribution functions of the individual
+(split) Gaussians. For large n, Q approaches a χ² distribution with one degree of freedom,
+so α is only approximate for small data sets.
+
+### Validation
+
+The test suite reproduces the EVM results of Table I in Birch & Singh (2014) for the
+first 2⁺ state in ⁴⁸Ti: τ = 5.83(86) ps for the lifetimes and B(E2)↑ = 0.075(11) e²b².
 
 ## Best Practices
 
-- **Report external error**: Unless data is extremely consistent, external error is more realistic
+- **Report the larger uncertainty**: Quote the larger of the internal and external uncertainty
 - **Inspect weights**: Large weight disparities may indicate outliers
-- **Use confidence level**: Values < 0.5 suggest investigating data quality
+- **Use confidence level**: Low values suggest investigating data quality
 - **Remove systematic outliers**: Suspect measurements should be excluded before averaging
 
 
