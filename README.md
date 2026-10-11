@@ -2,6 +2,7 @@
 
 [![Build Status](https://github.com/mkretlow/EVMavg.jl/workflows/CI/badge.svg)](https://github.com/mkretlow/EVMavg.jl/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23304159.svg)](https://doi.org/10.5281/zenodo.23304159)
 
 A Julia package for robust averaging of numerical data using the **Expected Value Method (EVM)** - an alternative to traditional weighted and unweighted averaging methods.
 
@@ -359,6 +360,8 @@ This package is licensed under the MIT License - see the LICENSE file for detail
 If you use this package in your research, please cite both the package and the paper
 describing the method. The repository includes a [`CITATION.cff`](CITATION.cff) file, so
 GitHub's "Cite this repository" button provides the package citation in several formats.
+The DOI [10.5281/zenodo.23304159](https://doi.org/10.5281/zenodo.23304159) always refers to
+the latest version; each release also has its own version DOI on Zenodo.
 
 ```bibtex
 @software{kretlow_evmavg,
@@ -366,6 +369,7 @@ GitHub's "Cite this repository" button provides the package citation in several 
   title  = {{EVMavg.jl}: Averaging with the Expected Value Method in {Julia}},
   url    = {https://github.com/mkretlow/EVMavg.jl},
   version = {2.0.0},
+  doi    = {10.5281/zenodo.23304159},
   year   = {2026}
 }
 

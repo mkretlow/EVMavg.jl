@@ -14,6 +14,11 @@ authors:
     given-names: Mike
     email: mike@kretlow.de
 version: 2.0.0
+doi: 10.5281/zenodo.23304159
+identifiers:
+  - type: doi
+    value: 10.5281/zenodo.23304159
+    description: Concept DOI for all versions of EVMavg.jl (Zenodo)
 license: MIT
 repository-code: "https://github.com/mkretlow/EVMavg.jl"
 keywords:
