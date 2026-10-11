@@ -60,6 +60,10 @@ using Test
         # NaN values
         @test_throws ArgumentError avg([1.0, NaN], [0.1, 0.1])
         @test_throws ArgumentError avg([1.0, 2.0], [0.1, NaN])
+
+        # Inf values
+        @test_throws ArgumentError avg([1.0, Inf], [0.1, 0.1])
+        @test_throws ArgumentError avg([1.0, 2.0], [0.1, Inf])
     end
     
     @testset "evm function - basic functionality" begin
@@ -82,8 +86,9 @@ using Test
         result_single = evm([5.0], [0.5])
         @test result_single.mean == 5.0
         @test result_single.internal_error == 0.5
-        @test result_single.external_error == 0.5
+        @test result_single.external_error == 0.0
         @test result_single.weights == [1.0]
+        @test isnan(result_single.confidence_level)
 
         # Another (legacy) test
         data = [1.0, 2.0, 3.0, 4.0]
@@ -160,6 +165,10 @@ using Test
         # NaN values
         @test_throws ArgumentError evm([1.0, NaN], [0.1, 0.1])
         @test_throws ArgumentError evm([1.0, 2.0], [0.1, NaN])
+
+        # Inf values
+        @test_throws ArgumentError evm([1.0, -Inf], [0.1, 0.1])
+        @test_throws ArgumentError evm([1.0, 2.0], [0.1, Inf])
     end
     
     @testset "evm function - literature example" begin
@@ -272,7 +281,11 @@ using Test
         @test result_single.mean == 5.0
         @test result_single.lower_error == 0.3
         @test result_single.upper_error == 0.5
+        @test result_single.internal_lower == 0.3
+        @test result_single.internal_upper == 0.5
+        @test result_single.external_error == 0.0
         @test result_single.weights == [1.0]
+        @test isnan(result_single.confidence_level)
     end
     
     @testset "evm_asymmetric function - asymmetry preservation" begin
@@ -351,6 +364,11 @@ using Test
         @test_throws ArgumentError evm_asymmetric([1.0, NaN], [0.1, 0.1], [0.2, 0.2])
         @test_throws ArgumentError evm_asymmetric([1.0, 2.0], [NaN, 0.1], [0.2, 0.2])
         @test_throws ArgumentError evm_asymmetric([1.0, 2.0], [0.1, 0.1], [0.2, NaN])
+
+        # Inf values
+        @test_throws ArgumentError evm_asymmetric([1.0, Inf], [0.1, 0.1], [0.2, 0.2])
+        @test_throws ArgumentError evm_asymmetric([1.0, 2.0], [Inf, 0.1], [0.2, 0.2])
+        @test_throws ArgumentError evm_asymmetric([1.0, 2.0], [0.1, 0.1], [0.2, Inf])
     end
     
     @testset "asymmetric_gaussian_pdf function" begin

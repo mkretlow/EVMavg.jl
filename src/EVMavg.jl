@@ -160,8 +160,8 @@ function avg(data::AbstractVector{<:Real}, sigmas::AbstractVector{<:Real})
     if any(sigmas .<= 0)
         throw(ArgumentError("all sigmas must be positive"))
     end
-    if any(isnan.(data)) || any(isnan.(sigmas))
-        throw(ArgumentError("data and sigmas cannot contain NaN values"))
+    if !all(isfinite, data) || !all(isfinite, sigmas)
+        throw(ArgumentError("data and sigmas must be finite (no NaN or Inf values)"))
     end
     
     # Handle single measurement
@@ -243,13 +243,13 @@ function evm(data::AbstractVector{<:Real},
     if any(errors .<= 0)
         throw(ArgumentError("all errors must be positive"))
     end
-    if any(isnan.(data)) || any(isnan.(errors))
-        throw(ArgumentError("data and errors cannot contain NaN values"))
+    if !all(isfinite, data) || !all(isfinite, errors)
+        throw(ArgumentError("data and errors must be finite (no NaN or Inf values)"))
     end
     
-    # Handle single measurement
+    # Single measurement: no spread (Eq. 5) and no goodness-of-fit test possible
     if n == 1
-        return EVMResult(data[1], errors[1], errors[1], [1.0], 1.0)
+        return EVMResult(data[1], errors[1], 0.0, [1.0], NaN)
     end
     
     # Compute mean probability density at each measured point
@@ -362,14 +362,14 @@ function evm_asymmetric(data::AbstractVector{<:Real},
     if any(lower_errors .<= 0) || any(upper_errors .<= 0)
         throw(ArgumentError("all errors must be positive"))
     end
-    if any(isnan.(data)) || any(isnan.(lower_errors)) || any(isnan.(upper_errors))
-        throw(ArgumentError("data and errors cannot contain NaN values"))
+    if !all(isfinite, data) || !all(isfinite, lower_errors) || !all(isfinite, upper_errors)
+        throw(ArgumentError("data and errors must be finite (no NaN or Inf values)"))
     end
     
-    # Handle single measurement
+    # Single measurement: no spread (Eq. 5) and no goodness-of-fit test possible
     if n == 1
         return EVMAsymmetricResult(data[1], lower_errors[1], upper_errors[1], 
-                                  lower_errors[1], upper_errors[1], 0.0, [1.0], 1.0)
+                                  lower_errors[1], upper_errors[1], 0.0, [1.0], NaN)
     end
     
     # Compute mean probability density at each measured point
