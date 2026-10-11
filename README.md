@@ -307,32 +307,18 @@ first 2⁺ state in ⁴⁸Ti: τ = 5.83(86) ps for the lifetimes and B(E2)↑ = 
 
 ## Changelog
 
-### Unreleased
+### 0.1.0 (initial release)
 
-Changes from a review of the implementation against Birch & Singh (2014):
-
-- **Confidence level (Eq. 6):** p_l is now the exact integral ∫_{-∞}^{x_EVM} M(x) dx,
-  computed from the Gaussian and split-Gaussian CDFs. Before, it was approximated by the sum of
-  the weights below the mean. Confidence levels change, sometimes considerably (e.g. 48Ti
-  lifetimes: 54.6% → 89.8%). Eq. 7 is evaluated with `erfc` for accuracy at small values.
-- **Asymmetric final uncertainty:** `evm_asymmetric` now follows the paper's rule. The variance
-  of the internal split normal, (1 − 2/π)(σ_int+ − σ_int-)² + σ_int+ σ_int-, is compared with
-  σ_ext², and either the internal pair or ±σ_ext is reported. Before, the maximum was taken
-  separately for each direction, which could mix the two (e.g. +σ_int+ −σ_ext).
-- **Weighted average (breaking):** `AvgResult.std_error` has been replaced by
-  `internal_error`, `external_error` and `reduced_chi2`. The old value used the scatter around
-  the unweighted mean and an effective sample size, and was neither the standard internal nor
-  external uncertainty.
-- **Single measurement:** `evm` and `evm_asymmetric` now both return an external uncertainty of
-  0 (Eq. 5) and a confidence level of `NaN`. `avg` returns an external uncertainty of 0 and
-  `reduced_chi2 = NaN`.
-- **Input validation:** `Inf` values are now rejected along with `NaN`.
-- **Tests:** added a regression test against Table I of the paper (48Ti lifetimes and
-  B(E2) values), and numerical-integration checks of the CDFs and the confidence level.
-- **Packaging:** the minimum supported Julia version is now 1.10 (LTS), and the dependency on
-  `Statistics` has been removed.
-- **Documentation:** corrected the README examples, merged conflicting sections on which
-  uncertainty to report, and documented the asymmetric method and the confidence-level test.
+- `evm`: Expected Value Method average with internal and external uncertainties, weights and
+  confidence level (Birch & Singh 2014, Eqs. 2–7). The probability p_l in the confidence test
+  is computed exactly from the Gaussian CDFs.
+- `evm_asymmetric`: EVM for asymmetric uncertainties using the split Gaussian of Eq. 1. The
+  reported uncertainty is the internal pair or ±σ_ext, whichever has the larger variance, as
+  recommended in the paper.
+- `avg`: unweighted and inverse-variance weighted average with internal and external
+  uncertainties and reduced chi-square.
+- Validated against the EVM results of Table I in Birch & Singh (2014) for ⁴⁸Ti.
+- Requires Julia 1.10 or later.
 
 ## References
 
