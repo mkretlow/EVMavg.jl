@@ -34,7 +34,7 @@ module EVMavg
 export avg, evm, evm_asymmetric, AvgResult, EVMResult, EVMAsymmetricResult
 
 using Statistics
-using SpecialFunctions: erf
+using SpecialFunctions: erfc
 
 """
     AvgResult
@@ -275,7 +275,13 @@ function evm(data::AbstractVector{<:Real},
     external_error = sqrt(sum(weights .* (data .- evm_mean).^2))
     
     # Confidence level (goodness of fit)
-    confidence = compute_confidence ? calculate_confidence(data, evm_mean, M, n) : NaN
+    if compute_confidence
+        # p_l = ∫_{-∞}^{x_E} M(x) dx (Eq. 6)
+        p_low = sum(gaussian_cdf(evm_mean, data[j], errors[j]) for j in 1:n) / n
+        confidence = calculate_confidence(data, evm_mean, p_low, n)
+    else
+        confidence = NaN
+    end
     
     return EVMResult(evm_mean, internal_error, external_error, weights, confidence)
 end
@@ -399,7 +405,14 @@ function evm_asymmetric(data::AbstractVector{<:Real},
     final_lower = sqrt(max(lower_var_int, ext_var))
     
     # Confidence level (goodness of fit)
-    confidence = compute_confidence ? calculate_confidence(data, evm_mean, M, n) : NaN
+    if compute_confidence
+        # p_l = ∫_{-∞}^{x_E} M(x) dx (Eq. 6)
+        p_low = sum(asymmetric_gaussian_cdf(evm_mean, data[j], lower_errors[j], upper_errors[j])
+                    for j in 1:n) / n
+        confidence = calculate_confidence(data, evm_mean, p_low, n)
+    else
+        confidence = NaN
+    end
     
     return EVMAsymmetricResult(evm_mean, final_lower, final_upper,
                               internal_lower, internal_upper, external_error,
@@ -457,31 +470,58 @@ function asymmetric_gaussian_pdf(x::Real, μ::Real,
 end
 
 """
-    calculate_confidence(data, mean, M, n)
+    gaussian_cdf(x, μ, σ)
 
-Calculate the approximate confidence level for the EVM result.
+Compute the Gaussian cumulative distribution function at x.
+"""
+function gaussian_cdf(x::Real, μ::Real, σ::Real)
+    return 0.5 * erfc(-(x - μ) / (sqrt(2) * σ))
+end
 
-Uses a modified Chi-Square test based on the number of data points
-above and below the mean compared to expected probabilities.
+"""
+    asymmetric_gaussian_cdf(x, μ, lower_error, upper_error)
+
+Compute the cumulative distribution function of the asymmetric Gaussian
+(Equation 1 of Birch & Singh, 2014) at x.
+
+The probability mass below μ is b/(a+b) and above μ is a/(a+b), where
+a = `upper_error` and b = `lower_error`.
+"""
+function asymmetric_gaussian_cdf(x::Real, μ::Real,
+                                 lower_error::Real, upper_error::Real)
+    a, b = upper_error, lower_error
+    if x <= μ
+        return b / (a + b) * erfc(-(x - μ) / (sqrt(2) * b))
+    else
+        return 1 - a / (a + b) * erfc((x - μ) / (sqrt(2) * a))
+    end
+end
+
+"""
+    calculate_confidence(data, mean, p_low, n)
+
+Calculate the approximate confidence level for the EVM result
+(Equations 6 and 7 of Birch & Singh, 2014).
+
+Uses a modified Chi-Square test comparing the number of data points
+below and above the mean with the probabilities expected from the
+mean probability density M(x).
 
 # Arguments
 - `data`: Data values
 - `mean`: EVM average
-- `M`: Mean probability density at each point
+- `p_low`: Probability of a point lying below the mean, ∫_{-∞}^{mean} M(x) dx
 - `n`: Number of data points
 
 # Returns
 - Confidence level (0 to 1)
 """
-function calculate_confidence(data::AbstractVector, mean::Real, 
-                             M::AbstractVector, n::Int)
+function calculate_confidence(data::AbstractVector, mean::Real,
+                             p_low::Real, n::Int)
     # Count measurements below and above mean
     n_low = sum(data .< mean)
     n_high = n - n_low
     
-    # Expected probabilities (approximate integration)
-    sum_M = sum(M)
-    p_low = sum(M[data .< mean]) / sum_M
     p_high = 1.0 - p_low
     
     # Avoid division by zero
@@ -493,8 +533,8 @@ function calculate_confidence(data::AbstractVector, mean::Real,
     Q = (n_low - n * p_low)^2 / (n * p_low) + 
         (n_high - n * p_high)^2 / (n * p_high)
     
-    # Convert to confidence level using error function
-    confidence = 1.0 - erf(sqrt(Q / 2))
+    # α = 1 - erf(√(Q/2)), via erfc for accuracy at small α
+    confidence = erfc(sqrt(Q / 2))
     
     return clamp(confidence, 0.0, 1.0)
 end

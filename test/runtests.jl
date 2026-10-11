@@ -348,4 +348,85 @@ using Test
         @test EVMavg.asymmetric_gaussian_pdf(μ, μ, lower_err, upper_err) > 
               EVMavg.asymmetric_gaussian_pdf(μ + 1.0, μ, lower_err, upper_err)
     end
+
+    @testset "Birch & Singh (2014) Table I - 48Ti" begin
+        # First 2+ state in 48Ti, excluding the values flagged as outliers
+        # (1969Ka10, 1956Te26)
+
+        # Mean lifetimes (ps), paper result τ* (EVM) = 5.83(86)
+        τ  = [5.7, 6.7, 4.3, 4.2, 8.29, 6.0, 5.3, 6.16, 5.48, 6.43, 5.54, 3.6, 7.1, 6.3, 3.17, 6.0]
+        τu = [0.3, 0.6, 2.0, 3.0, 1.24, 1.3, 0.8, 0.36, 0.60, 0.61, 1.39, 1.5, 2.2, 1.6, 1.27, 2.0]
+        τl = [0.3, 0.6, 2.0, 1.7, 1.24, 1.3, 0.8, 0.32, 0.49, 0.51, 0.92, 1.5, 2.2, 1.1, 0.70, 2.0]
+
+        result = evm_asymmetric(τ, τl, τu)
+        @test round(result.mean, digits=2) == 5.83
+        @test round(result.upper_error, digits=2) == 0.86
+        @test round(result.lower_error, digits=2) == 0.86
+        @test result.mean ≈ 5.832279643935265 atol=1E-12
+        @test result.confidence_level ≈ 0.8980364659264773 atol=1E-10
+
+        # B(E2)↑ values (e²b²), paper result B* (EVM) = 0.075(11)
+        B  = [0.0778, 0.0662, 0.103, 0.106, 0.0535, 0.074, 0.084, 0.0720,
+              0.081, 0.069, 0.080, 0.123, 0.062, 0.070, 0.140, 0.074]
+        Bu = [0.0043, 0.0065, 0.090, 0.072, 0.0094, 0.020, 0.015, 0.0040,
+              0.008, 0.006, 0.016, 0.088, 0.028, 0.014, 0.040, 0.037]
+        Bl = [0.0039, 0.0054, 0.033, 0.044, 0.0070, 0.013, 0.011, 0.0040,
+              0.008, 0.006, 0.016, 0.036, 0.015, 0.014, 0.040, 0.018]
+
+        result = evm_asymmetric(B, Bl, Bu)
+        @test round(result.mean, digits=3) == 0.075
+        @test round(result.upper_error, digits=3) == 0.011
+        @test round(result.lower_error, digits=3) == 0.011
+    end
+
+    @testset "CDFs and confidence level (Eqs. 6-7)" begin
+        # Simple trapezoidal integration of f over [lo, hi]
+        function integrate(f, lo, hi; npts=200_001)
+            xs = range(lo, hi, length=npts)
+            ys = f.(xs)
+            return step(xs) * (sum(ys) - (ys[1] + ys[end]) / 2)
+        end
+
+        @test EVMavg.gaussian_cdf(0.0, 0.0, 1.0) ≈ 0.5
+        @test EVMavg.gaussian_cdf(1.0, 0.0, 1.0) ≈ 0.8413447460685429
+        @test EVMavg.gaussian_cdf(1.3, 0.5, 2.0) ≈
+              integrate(x -> EVMavg.gaussian_pdf(x, 0.5, 2.0), -20.0, 1.3) atol=1e-8
+
+        # Asymmetric CDF: mass below μ is b/(a+b), and it integrates the PDF
+        lower_err, upper_err = 0.5, 1.5
+        @test EVMavg.asymmetric_gaussian_cdf(0.0, 0.0, lower_err, upper_err) ≈ 0.25
+        for x in (-1.0, -0.2, 0.7, 3.0)
+            @test EVMavg.asymmetric_gaussian_cdf(x, 0.0, lower_err, upper_err) ≈
+                  integrate(t -> EVMavg.asymmetric_gaussian_pdf(t, 0.0, lower_err, upper_err),
+                            -10.0, x) atol=1e-8
+        end
+        @test EVMavg.asymmetric_gaussian_cdf(0.4, 1.0, 0.3, 0.3) ≈
+              EVMavg.gaussian_cdf(0.4, 1.0, 0.3)
+        @test EVMavg.asymmetric_gaussian_cdf(1.6, 1.0, 0.3, 0.3) ≈
+              EVMavg.gaussian_cdf(1.6, 1.0, 0.3)
+
+        # Confidence level uses p_l = ∫_{-∞}^{x_E} M(x) dx, checked by quadrature
+        data = [5.7, 6.7, 4.3, 6.0, 5.3, 6.16]
+        errors = [0.3, 0.6, 2.0, 1.3, 0.8, 0.34]
+        n = length(data)
+        result = evm(data, errors)
+        M(x) = sum(EVMavg.gaussian_pdf(x, data[j], errors[j]) for j in 1:n) / n
+        p_low = integrate(M, -20.0, result.mean)
+        n_low = count(<(result.mean), data)
+        Q = (n_low - n * p_low)^2 / (n * p_low) +
+            ((n - n_low) - n * (1 - p_low))^2 / (n * (1 - p_low))
+        @test result.confidence_level ≈ EVMavg.erfc(sqrt(Q / 2)) atol=1e-6
+
+        # Same check for the asymmetric version
+        lower_errors = [0.3, 0.4, 1.5, 1.0, 0.6, 0.30]
+        upper_errors = [0.4, 0.8, 2.5, 1.6, 0.9, 0.38]
+        result = evm_asymmetric(data, lower_errors, upper_errors)
+        Ma(x) = sum(EVMavg.asymmetric_gaussian_pdf(x, data[j], lower_errors[j], upper_errors[j])
+                    for j in 1:n) / n
+        p_low = integrate(Ma, -20.0, result.mean)
+        n_low = count(<(result.mean), data)
+        Q = (n_low - n * p_low)^2 / (n * p_low) +
+            ((n - n_low) - n * (1 - p_low))^2 / (n * (1 - p_low))
+        @test result.confidence_level ≈ EVMavg.erfc(sqrt(Q / 2)) atol=1e-6
+    end
 end

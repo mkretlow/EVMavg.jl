@@ -70,7 +70,7 @@ println("Confidence: $(round(evm_result.confidence_level * 100, digits=1))%")
 # EVM automatically down-weights outliers and provides realistic uncertainties
 # Weighted average: 5.93 ± 0.48
 # EVM average: 5.89 ± 0.87  (more realistic given the scatter)
-# Confidence: 65.4%
+# Confidence: 97.7%
 ```
 
 ## Methods
