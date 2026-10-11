@@ -31,7 +31,7 @@ Unlike conventional averaging methods, EVM provides:
 """
 module EVMavg
 
-export avg, evm, evm_asymmetric, AvgResult, EVMResult, EVMAsymmetricResult
+export avg, evm, evm_asymmetric, uncertainty, AvgResult, EVMResult, EVMAsymmetricResult
 
 using SpecialFunctions: erfc
 
@@ -128,6 +128,31 @@ function Base.show(io::IO, result::EVMAsymmetricResult)
 end
 
 """
+    uncertainty(result)
+
+Uncertainty to report for an averaging result.
+
+Following Birch & Singh (2014), the more conservative of the internal and
+external uncertainty is quoted:
+
+- `EVMResult`, `AvgResult`: `max(internal_error, external_error)`
+- `EVMAsymmetricResult`: the tuple `(upper_error, lower_error)`, i.e. the internal
+  pair or ±σ_ext, whichever has the larger variance (see [`evm_asymmetric`](@ref))
+
+# Examples
+```julia
+result = evm([5.7, 6.7, 4.3, 6.0, 5.3, 6.16], [0.3, 0.6, 2.0, 1.3, 0.8, 0.34])
+println("\$(result.mean) ± \$(uncertainty(result))")
+
+result = evm_asymmetric([10.2, 10.5, 10.1], [0.3, 0.4, 0.2], [0.5, 0.6, 0.4])
+upper, lower = uncertainty(result)
+```
+"""
+uncertainty(result::EVMResult) = max(result.internal_error, result.external_error)
+uncertainty(result::AvgResult) = max(result.internal_error, result.external_error)
+uncertainty(result::EVMAsymmetricResult) = (result.upper_error, result.lower_error)
+
+"""
     avg(data::AbstractVector, sigmas::AbstractVector) -> AvgResult
 
 Compute unweighted and weighted averages with internal and external uncertainties.
@@ -160,7 +185,7 @@ data = [10.2, 10.5, 10.1, 10.4]
 sigmas = [0.3, 0.2, 0.4, 0.25]
 result = avg(data, sigmas)
 println(result.weighted)  # Weighted average
-println(max(result.internal_error, result.external_error))  # Uncertainty
+println(uncertainty(result))  # Larger of internal and external uncertainty
 ```
 """
 function avg(data::AbstractVector{<:Real}, sigmas::AbstractVector{<:Real})
@@ -228,7 +253,8 @@ value and uncertainty. The final result is a weighted combination where weights
 are proportional to the expected frequency of each data point given the full dataset.
 
 Internal uncertainty reflects the precision of individual data points, while external 
-uncertainty reflects the spread of the data. The larger of the two should typically be reported.
+uncertainty reflects the spread of the data. The larger of the two should be reported;
+`uncertainty(result)` returns it.
 
 # Throws
 - `ArgumentError`: If arrays have different lengths or contain invalid values
@@ -239,7 +265,7 @@ data = [5.7, 6.7, 4.3, 4.2, 8.29, 6.0, 5.3, 6.16]
 sigmas = [0.3, 0.6, 2.0, 1.5, 1.24, 1.3, 0.8, 0.34]
 result = evm(data, sigmas)
 
-println("EVM average: \$(result.mean) ± \$(result.external_error)")
+println("EVM average: \$(result.mean) ± \$(uncertainty(result))")
 println("Confidence: \$(round(result.confidence_level * 100, digits=1))%")
 ```
 

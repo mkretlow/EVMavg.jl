@@ -415,6 +415,40 @@ using Test
               EVMavg.asymmetric_gaussian_pdf(μ + 1.0, μ, lower_err, upper_err)
     end
 
+    @testset "uncertainty function" begin
+        data = [5.7, 6.7, 4.3, 6.0, 5.3, 6.16]
+        sigmas = [0.3, 0.6, 2.0, 1.3, 0.8, 0.34]
+
+        # EVM: external larger than internal here
+        r = evm(data, sigmas)
+        @test r.external_error > r.internal_error
+        @test uncertainty(r) == r.external_error
+
+        # EVM: internal larger than external (consistent data)
+        r = evm([10.0, 10.1, 10.0, 10.1], fill(0.5, 4))
+        @test r.internal_error > r.external_error
+        @test uncertainty(r) == r.internal_error
+
+        # Weighted average: both cases
+        r = avg(data, sigmas)
+        @test r.internal_error > r.external_error
+        @test uncertainty(r) == r.internal_error
+        r = avg([10.2, 10.5, 14.3, 10.1, 10.4], [0.2, 0.2, 0.3, 0.2, 0.2])
+        @test r.external_error > r.internal_error
+        @test uncertainty(r) == r.external_error
+
+        # Asymmetric: (upper, lower) as chosen by the variance rule
+        r = evm_asymmetric([10.2, 10.5, 10.1], [0.3, 0.4, 0.2], [0.5, 0.6, 0.4])
+        @test uncertainty(r) == (r.upper_error, r.lower_error)
+        upper, lower = uncertainty(r)
+        @test upper > lower
+
+        # Single measurement
+        @test uncertainty(evm([5.0], [0.5])) == 0.5
+        @test uncertainty(avg([5.0], [0.5])) == 0.5
+        @test uncertainty(evm_asymmetric([5.0], [0.3], [0.5])) == (0.5, 0.3)
+    end
+
     @testset "Birch & Singh (2014) Table I - 48Ti" begin
         # First 2+ state in 48Ti, excluding the values flagged as outliers
         # (1969Ka10, 1956Te26)

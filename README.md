@@ -61,13 +61,11 @@ sigmas = [0.3, 0.6, 2.0, 1.3, 0.8, 0.34]
 
 # Traditional weighted average
 avg_result = avg(data, sigmas)
-σ_avg = max(avg_result.internal_error, avg_result.external_error)
-println("Weighted average: $(avg_result.weighted) ± $σ_avg")
+println("Weighted average: $(avg_result.weighted) ± $(uncertainty(avg_result))")
 
 # EVM average (more robust)
 evm_result = evm(data, sigmas)
-σ = max(evm_result.internal_error, evm_result.external_error)
-println("EVM average: $(evm_result.mean) ± $σ")
+println("EVM average: $(evm_result.mean) ± $(uncertainty(evm_result))")
 println("Confidence: $(round(evm_result.confidence_level * 100, digits=1))%")
 
 # Weighted average: 5.94 ± 0.20  (internal 0.20, external 0.18)
@@ -94,7 +92,8 @@ result = avg(data, sigmas)
 - `reduced_chi2`: Reduced chi-square χ²/(n−1), with χ² = Σwᵢ(xᵢ − x̄_w)²
 
 The external uncertainty equals the internal one scaled by the Birge ratio √(χ²/(n−1)).
-As for EVM, report the larger of the two. For a single measurement, `external_error` is 0
+As for EVM, report the larger of the two, which `uncertainty(result)` returns. For a single
+measurement, `external_error` is 0
 and `reduced_chi2` is `NaN`.
 
 ### Expected Value Method (EVM)
@@ -123,8 +122,9 @@ result = evm(data, errors; compute_confidence=true)
 
 **Which uncertainty to report?**
 
-Report the larger of `internal_error` and `external_error`. Following Birch & Singh (2014),
-the quoted uncertainty should be the more conservative of the two estimates:
+Report the larger of `internal_error` and `external_error`, which `uncertainty(result)` returns.
+Following Birch & Singh (2014), the quoted uncertainty should be the more conservative of the
+two estimates:
 
 - **Internal uncertainty**: Reflects measurement precision (from the input errors)
 - **External uncertainty**: Reflects measurement scatter (consistency of the data)
@@ -157,8 +157,9 @@ result = evm_asymmetric(data, lower_errors, upper_errors; compute_confidence=tru
 
 **Which uncertainty to report?**
 
-Always report `upper_error` and `lower_error` - these are the final uncertainties, chosen
-conservatively from the two sources:
+Always report `upper_error` and `lower_error` (also returned as a tuple by
+`uncertainty(result)`) - these are the final uncertainties, chosen conservatively from the two
+sources:
 
 - **Internal uncertainties**: Reflect measurement precision (from input errors), separately for each direction
 - **External uncertainty**: Reflects measurement scatter (consistency of data), symmetric
@@ -300,13 +301,19 @@ first 2⁺ state in ⁴⁸Ti: τ = 5.83(86) ps for the lifetimes and B(E2)↑ = 
 
 ## Best Practices
 
-- **Report the larger uncertainty**: Quote the larger of the internal and external uncertainty
+- **Report the larger uncertainty**: Quote the larger of the internal and external uncertainty, as returned by `uncertainty(result)`
 - **Inspect weights**: Large weight disparities may indicate outliers
 - **Use confidence level**: Low values suggest investigating data quality
 - **Remove systematic outliers**: Suspect measurements should be excluded before averaging
 
 
 ## Changelog
+
+### 2.1.0
+
+- New function `uncertainty(result)` returning the uncertainty to report: the larger of the
+  internal and external uncertainty for `EVMResult` and `AvgResult`, and the tuple
+  `(upper_error, lower_error)` for `EVMAsymmetricResult`.
 
 ### 2.0.0
 
@@ -368,7 +375,7 @@ the latest version; each release also has its own version DOI on Zenodo.
   author = {Kretlow, Mike},
   title  = {{EVMavg.jl}: Averaging with the Expected Value Method in {Julia}},
   url    = {https://github.com/mkretlow/EVMavg.jl},
-  version = {2.0.0},
+  version = {2.1.0},
   doi    = {10.5281/zenodo.23304159},
   year   = {2026}
 }

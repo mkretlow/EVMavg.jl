@@ -13,7 +13,7 @@ authors:
   - family-names: Kretlow
     given-names: Mike
     email: mike@kretlow.de
-version: 2.0.0
+version: 2.1.0
 doi: 10.5281/zenodo.23304159
 identifiers:
   - type: doi

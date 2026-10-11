@@ -30,12 +30,8 @@ for (i, w) in enumerate(result.weights)
     println("  Measurement $i: $(round(w, digits=4))")
 end
 
-println("\nRecommendation:")
-if result.external_error > result.internal_error
-    println("  Report external error: $(result.mean) ± $(round(result.external_error, digits=2))")
-else
-    println("  Report internal error: $(result.mean) ± $(round(result.internal_error, digits=2))")
-end
+println("\nRecommendation (larger of internal and external uncertainty):")
+println("  Report: $(result.mean) ± $(round(uncertainty(result), digits=2))")
 
 # Example 2: Comparison with weighted average
 println("\n" * "=" ^ 60)
@@ -55,13 +51,12 @@ for (i, (d, s)) in enumerate(zip(data, sigmas))
 end
 
 println("\nWeighted Average:")
-σ_avg = max(avg_result.internal_error, avg_result.external_error)
-println("  Result: $(round(avg_result.weighted, digits=2)) ± $(round(σ_avg, digits=2))")
+println("  Result: $(round(avg_result.weighted, digits=2)) ± $(round(uncertainty(avg_result), digits=2))")
 println("  Internal error: $(round(avg_result.internal_error, digits=2)), external error: $(round(avg_result.external_error, digits=2))")
 println("  Reduced chi-square: $(round(avg_result.reduced_chi2, digits=1))")
 
 println("\nEVM Average:")
-println("  Result: $(round(evm_result.mean, digits=2)) ± $(round(evm_result.external_error, digits=2))")
+println("  Result: $(round(evm_result.mean, digits=2)) ± $(round(uncertainty(evm_result), digits=2))")
 println("  Outlier weight: $(round(evm_result.weights[end], digits=4))")
 println("  Typical weight: $(round(sum(evm_result.weights[1:end-1]) / (length(evm_result.weights) - 1), digits=4))")
 
@@ -106,6 +101,6 @@ println("\nComparison with symmetric EVM:")
 avg_errors = (lower_errors .+ upper_errors) ./ 2
 result_sym = evm(data_asym, avg_errors)
 
-println("  Symmetric:  $(round(result_sym.mean, digits=2)) ± $(round(result_sym.external_error, digits=2))")
+println("  Symmetric:  $(round(result_sym.mean, digits=2)) ± $(round(uncertainty(result_sym), digits=2))")
 println("  Asymmetric: $(round(result_asym.mean, digits=2)) +$(round(result_asym.upper_error, digits=2)) -$(round(result_asym.lower_error, digits=2))")
 println("\nNote: Asymmetric method preserves the different error magnitudes in each direction")
