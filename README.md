@@ -329,6 +329,8 @@ Changes from a review of the implementation against Birch & Singh (2014):
 - **Input validation:** `Inf` values are now rejected along with `NaN`.
 - **Tests:** added a regression test against Table I of the paper (48Ti lifetimes and
   B(E2) values), and numerical-integration checks of the CDFs and the confidence level.
+- **Packaging:** the minimum supported Julia version is now 1.10 (LTS), and the dependency on
+  `Statistics` has been removed.
 - **Documentation:** corrected the README examples, merged conflicting sections on which
   uncertainty to report, and documented the asymmetric method and the confidence-level test.
 

@@ -33,7 +33,6 @@ module EVMavg
 
 export avg, evm, evm_asymmetric, AvgResult, EVMResult, EVMAsymmetricResult
 
-using Statistics
 using SpecialFunctions: erfc
 
 """
@@ -191,7 +190,7 @@ function avg(data::AbstractVector{<:Real}, sigmas::AbstractVector{<:Real})
     sw = sum(w)
     
     # Unweighted average
-    unweighted_avg = mean(data)
+    unweighted_avg = sum(data) / n
     
     # Weighted average
     weighted_avg = sum(data .* w) / sw

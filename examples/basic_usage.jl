@@ -4,7 +4,7 @@ Basic usage examples for EVMavg.jl
 This script demonstrates the main features of the package.
 """
 
-using EVMavg, Statistics
+using EVMavg
 
 # Example 1: Simple EVM averaging
 println("=" ^ 60)
@@ -63,7 +63,7 @@ println("  Reduced chi-square: $(round(avg_result.reduced_chi2, digits=1))")
 println("\nEVM Average:")
 println("  Result: $(round(evm_result.mean, digits=2)) ± $(round(evm_result.external_error, digits=2))")
 println("  Outlier weight: $(round(evm_result.weights[end], digits=4))")
-println("  Typical weight: $(round(mean(evm_result.weights[1:end-1]), digits=4))")
+println("  Typical weight: $(round(sum(evm_result.weights[1:end-1]) / (length(evm_result.weights) - 1), digits=4))")
 
 
 println("\n" * "=" ^ 60)
