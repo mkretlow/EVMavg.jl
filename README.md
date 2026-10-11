@@ -149,12 +149,16 @@ result = evm_asymmetric(data, lower_errors, upper_errors; compute_confidence=tru
 
 **Which uncertainty to report?**
 
-Always report `upper_error` and `lower_error` - these are the final uncertainties that 
-conservatively combine both sources:
+Always report `upper_error` and `lower_error` - these are the final uncertainties, chosen
+conservatively from the two sources:
 
 - **Internal uncertainties**: Reflect measurement precision (from input errors), separately for each direction
 - **External uncertainty**: Reflects measurement scatter (consistency of data), symmetric
-- **Final uncertainties**: For each direction, the larger of the internal and external uncertainty
+- **Final uncertainties**: Following Birch & Singh (2014), the estimate whose associated
+  (asymmetric) normal distribution has the larger variance. The variance of the internal split
+  normal, (1 − 2/π)(σ_int+ − σ_int-)² + σ_int+ σ_int-, is compared with σ_ext². Either the
+  internal pair (+σ_int+ −σ_int-) or the symmetric external uncertainty (±σ_ext) is reported;
+  the two are never mixed.
 
 The other fields are provided for diagnostic purposes to understand uncertainty sources.
 

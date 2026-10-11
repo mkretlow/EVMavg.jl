@@ -302,6 +302,39 @@ using Test
         @test result_asym.lower_error ≈ result_asym.upper_error atol=1e-6
     end
     
+    @testset "evm_asymmetric function - final uncertainty (paper's rule)" begin
+        # Variance of the split normal: (1 - 2/π)(a - b)² + ab
+        @test EVMavg.split_normal_variance(0.3, 0.3) ≈ 0.09
+        @test EVMavg.split_normal_variance(0.1, 1.0) ≈ (1 - 2/π) * 0.81 + 0.1
+
+        # σ_int- < σ_ext < σ_int+, internal variance larger:
+        # report the internal pair, not +σ_int+ -σ_ext
+        result = evm_asymmetric([10.0, 10.3, 10.6], fill(0.1, 3), fill(1.0, 3))
+        @test result.internal_lower < result.external_error < result.internal_upper
+        @test result.upper_error == result.internal_upper
+        @test result.lower_error == result.internal_lower
+
+        # σ_int- < σ_ext < σ_int+, external variance larger:
+        # report ±σ_ext, not +σ_int+ -σ_ext
+        result = evm_asymmetric([10.0, 10.6, 11.2], fill(0.05, 3), fill(0.8, 3))
+        @test result.internal_lower < result.external_error < result.internal_upper
+        @test result.upper_error == result.external_error
+        @test result.lower_error == result.external_error
+
+        # Internal and external uncertainties are never mixed
+        for (data, lo, up) in (([10.0, 10.2, 10.1, 9.9], [0.2, 0.3, 0.2, 0.2], [0.3, 0.4, 0.3, 0.3]),
+                               ([10.2, 10.5, 10.1], [0.3, 0.4, 0.2], [0.5, 0.6, 0.4]),
+                               ([12.5, 13.2, 12.8, 13.0], [0.8, 1.0, 0.6, 0.7], [1.5, 2.0, 1.2, 1.4]))
+            r = evm_asymmetric(data, lo, up)
+            var_int = EVMavg.split_normal_variance(r.internal_lower, r.internal_upper)
+            if var_int > r.external_error^2
+                @test (r.upper_error, r.lower_error) == (r.internal_upper, r.internal_lower)
+            else
+                @test (r.upper_error, r.lower_error) == (r.external_error, r.external_error)
+            end
+        end
+    end
+
     @testset "evm_asymmetric function - input validation" begin
         # Mismatched lengths
         @test_throws ArgumentError evm_asymmetric([1.0, 2.0], [0.1], [0.2, 0.2])

@@ -89,8 +89,12 @@ println("  Internal upper: $(round(result_asym.internal_upper, digits=3)) (from 
 println("  Internal lower: $(round(result_asym.internal_lower, digits=3)) (from measurement precision)")
 println("  External:       $(round(result_asym.external_error, digits=3)) (from data scatter, symmetric)")
 println()
-println("  Final upper:    $(round(result_asym.upper_error, digits=3)) = max(internal_upper, external)")
-println("  Final lower:    $(round(result_asym.lower_error, digits=3)) = max(internal_lower, external)")
+var_int = (1 - 2/π) * (result_asym.internal_upper - result_asym.internal_lower)^2 +
+          result_asym.internal_upper * result_asym.internal_lower
+source = var_int > result_asym.external_error^2 ? "internal" : "external"
+println("  Final upper:    $(round(result_asym.upper_error, digits=3))")
+println("  Final lower:    $(round(result_asym.lower_error, digits=3))")
+println("  (the $source estimate has the larger variance)")
 println()
 println("  ✓ REPORT: $(round(result_asym.mean, digits=2)) +$(round(result_asym.upper_error, digits=2)) -$(round(result_asym.lower_error, digits=2))")
 

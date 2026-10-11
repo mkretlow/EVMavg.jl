@@ -320,13 +320,16 @@ The external uncertainty is symmetric and reflects the overall spread:
 - σ_ext = √(Σᵢ wᵢ(μᵢ - x_EVM)²)
 
 **Final reported uncertainties** (`upper_error` and `lower_error`):
-For each direction, the final uncertainty is the square root of the maximum variance:
-- upper_error = √(max(σ_int+², σ_ext²))
-- lower_error = √(max(σ_int-², σ_ext²))
+Following Birch & Singh (2014), the quoted uncertainty is the one whose associated
+(asymmetric) normal distribution has the larger variance. The variance of the split
+normal with widths σ_int+ and σ_int- is
 
-This conservative approach ensures the uncertainty reflects both data precision
-and data scatter. The internal uncertainties tell you about precision limitations,
-while external uncertainty tells you about consistency. The final errors incorporate both.
+    Var_int = (1 - 2/π)(σ_int+ - σ_int-)² + σ_int+ σ_int-
+
+- If Var_int > σ_ext²: upper_error = σ_int+, lower_error = σ_int-
+- Otherwise: upper_error = lower_error = σ_ext
+
+The internal and external uncertainties are never mixed between directions.
 
 # Examples
 ```julia
@@ -395,14 +398,13 @@ function evm_asymmetric(data::AbstractVector{<:Real},
     # Symmetric, as defined in Equation 5
     external_error = sqrt(sum(weights .* (data .- evm_mean).^2))
     
-    # Determine final uncertainties (larger variance wins)
-    # Convert to variances, compare, then back to standard deviations
-    upper_var_int = internal_upper^2
-    lower_var_int = internal_lower^2
-    ext_var = external_error^2
-    
-    final_upper = sqrt(max(upper_var_int, ext_var))
-    final_lower = sqrt(max(lower_var_int, ext_var))
+    # Final uncertainties: quote the estimate whose (asymmetric) normal
+    # distribution has the larger variance (Birch & Singh 2014, Sec. III)
+    if split_normal_variance(internal_lower, internal_upper) > external_error^2
+        final_upper, final_lower = internal_upper, internal_lower
+    else
+        final_upper, final_lower = external_error, external_error
+    end
     
     # Confidence level (goodness of fit)
     if compute_confidence
@@ -495,6 +497,18 @@ function asymmetric_gaussian_cdf(x::Real, μ::Real,
     else
         return 1 - a / (a + b) * erfc((x - μ) / (sqrt(2) * a))
     end
+end
+
+"""
+    split_normal_variance(lower_error, upper_error)
+
+Variance of the asymmetric Gaussian (Equation 1 of Birch & Singh, 2014)
+with widths b = `lower_error` and a = `upper_error`:
+(1 - 2/π)(a - b)² + ab.
+"""
+function split_normal_variance(lower_error::Real, upper_error::Real)
+    a, b = upper_error, lower_error
+    return (1 - 2 / π) * (a - b)^2 + a * b
 end
 
 """
